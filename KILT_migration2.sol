@@ -22,7 +22,6 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     event WithdrawalDelayExtended(uint256 newTimestamp);
     event TokensRecovered(address indexed token, uint256 amount);
     event ETHRecovered(uint256 amount);
-    // 2a: Added events
     event TokensMigrated(address indexed user, uint256 oldAmount, uint256 newAmount);
     event ContractPaused(address indexed owner);
     event ContractUnpaused(address indexed owner);
@@ -32,7 +31,7 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
         withdrawalAllowedAfter = block.timestamp + delayInSeconds;
     }
 
-    // 1c: Validate newToken address
+    // Validate newToken address
     function setNewToken(address _newToken) external onlyOwner {
         require(address(newToken) == address(0), "New token already set");
         require(_newToken != address(0), "Invalid token address");
@@ -53,32 +52,32 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
         emit Whitelisted(account, status);
     }
 
-    // 2a: Pause with event
+    // Pause with event
     function pause() external onlyOwner {
         _pause();
         emit ContractPaused(msg.sender);
     }
 
-    // 2a: Unpause with event
+    // Unpause with event
     function unpause() external onlyOwner {
         _unpause();
         emit ContractUnpaused(msg.sender);
     }
 
-    // 1b & 3b: Prevent overflows and clearer error messages in migrate
+    // Prevent overflows and clearer error messages in migrate
     function migrate(uint256 amount) external whenNotPaused nonReentrant {
         require(isMigrationActive || whitelist[msg.sender], "Migration off and not whitelisted");
         require(amount > 0, "Amount must be greater than 0");
         uint256 newTokenAmount = (amount * EXCHANGE_RATE_NUMERATOR) / EXCHANGE_RATE_DENOMINATOR;
-        require(newTokenAmount > 0, "New token amount too small after conversion"); // 1b: Overflow prevention
+        require(newTokenAmount > 0, "New token amount too small after conversion");
         require(newToken.balanceOf(address(this)) >= newTokenAmount, "Insufficient new token balance in contract");
         require(oldToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance for old tokens");
 
         // Burn old tokens first (external call to oldToken)
-        require(oldToken.transferFrom(msg.sender, BURN_ADDRESS, amount), "Failed to burn old tokens from sender"); // 3b
+        require(oldToken.transferFrom(msg.sender, BURN_ADDRESS, amount), "Failed to burn old tokens from sender");
         // Then transfer new tokens (external call to newToken)
-        require(newToken.transfer(msg.sender, newTokenAmount), "Failed to transfer new tokens to sender"); // 3b
-        emit TokensMigrated(msg.sender, amount, newTokenAmount); // 2a
+        require(newToken.transfer(msg.sender, newTokenAmount), "Failed to transfer new tokens to sender");
+        emit TokensMigrated(msg.sender, amount, newTokenAmount);
     }
 
     // Withdraw newKILT (owner only, after delay)
@@ -91,55 +90,4 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     // Extend withdrawal delay (owner only, cannot shorten)
     function extendWithdrawalDelay(uint256 additionalSeconds) external onlyOwner {
         uint256 newTimestamp = withdrawalAllowedAfter + additionalSeconds;
-        require(newTimestamp > withdrawalAllowedAfter, "Cannot shorten delay");
-        withdrawalAllowedAfter = newTimestamp;
-        emit WithdrawalDelayExtended(newTimestamp);
-    }
-
-    // Recover unrelated ERC-20 tokens (owner only, after delay)
-    function recoverTokens(address token, uint256 amount) external onlyOwner {
-        require(block.timestamp >= withdrawalAllowedAfter, "Recovery not yet allowed");
-        require(token != address(newToken), "Cannot recover newToken");
-        require(IERC20(token).transfer(msg.sender, amount), "Token recovery failed");
-        emit TokensRecovered(token, amount);
-    }
-
-    // Recover ETH (owner only, after delay)
-    function recoverETH() external onlyOwner {
-        require(block.timestamp >= withdrawalAllowedAfter, "Recovery not yet allowed");
-        uint256 balance = address(this).balance;
-        (bool sent, ) = msg.sender.call{value: balance}("");
-        require(sent, "ETH recovery failed");
-        emit ETHRecovered(balance);
-    }
-
-    // 2b: Make exchange rate publicly verifiable
-    function getExchangeRate() external pure returns (uint256 numerator, uint256 denominator) {
-        return (EXCHANGE_RATE_NUMERATOR, EXCHANGE_RATE_DENOMINATOR);
-    }
-
-    // 3c: Migration status view
-    function getMigrationStatus() external view returns (
-        bool active,
-        bool paused,
-        uint256 withdrawalDelay,
-        uint256 newTokenBalance
-    ) {
-        return (
-            isMigrationActive,
-            paused(),
-            withdrawalAllowedAfter,
-            newToken.balanceOf(address(this))
-        );
-    }
-
-    // Prevent ETH from being sent to the contract
-    receive() external payable {
-        revert("Contract does not accept ETH");
-    }
-
-    // Fallback function for safety
-    fallback() external payable {
-        revert("Contract does not accept ETH");
-    }
-}
+        require
