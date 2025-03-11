@@ -1,1 +1,36 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract KILTToken is ERC20 {
+    // Constants for token amounts (with 18 decimals)
+    uint256 public constant TOTAL_SUPPLY = 290_560_000 * 10**18; // 290,560,000 tokens
+    uint256 public constant OWNER_AMOUNT = 50_000_000 * 10**18;  // 50,000,000 tokens
+    uint256 public constant MIGRATION_AMOUNT = TOTAL_SUPPLY - OWNER_AMOUNT; // 240,560,000 tokens
+
+    // Migration contract address (immutable, set at deployment)
+    address public immutable migrationContract;
+
+    // Event for deployment transparency
+    event KILTDeployed(address indexed migrationContract, uint256 ownerAmount, uint256 migrationAmount);
+
+    constructor(address _migrationContract) 
+        ERC20("KILT Protocol", "KILT")
+    {
+        require(_migrationContract != address(0), "KILT: Migration contract cannot be zero address");
+        
+        migrationContract = _migrationContract;
+
+        // Mint tokens
+        _mint(msg.sender, OWNER_AMOUNT);
+        _mint(_migrationContract, MIGRATION_AMOUNT);
+        
+        emit KILTDeployed(_migrationContract, OWNER_AMOUNT, MIGRATION_AMOUNT);
+    }
+
+    // Explicit decimals for clarity
+    function decimals() public pure override returns (uint8) {
+        return 18;
+    }
+}
