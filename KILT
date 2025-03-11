@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract KILTToken is ERC20 {
+contract KILT is ERC20 {
     // Constants for token amounts (with 18 decimals)
     uint256 public constant TOTAL_SUPPLY = 290_560_000 * 10**18; // 290,560,000 tokens
     uint256 public constant OWNER_AMOUNT = 50_000_000 * 10**18;  // 50,000,000 tokens
