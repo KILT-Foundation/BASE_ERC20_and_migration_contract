@@ -90,4 +90,55 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     // Extend withdrawal delay (owner only, cannot shorten)
     function extendWithdrawalDelay(uint256 additionalSeconds) external onlyOwner {
         uint256 newTimestamp = withdrawalAllowedAfter + additionalSeconds;
-        require
+        require(newTimestamp > withdrawalAllowedAfter, "Cannot shorten delay");
+        withdrawalAllowedAfter = newTimestamp;
+        emit WithdrawalDelayExtended(newTimestamp);
+    }
+
+    // Recover unrelated ERC-20 tokens (owner only, after delay)
+    function recoverTokens(address token, uint256 amount) external onlyOwner {
+        require(block.timestamp >= withdrawalAllowedAfter, "Recovery not yet allowed");
+        require(token != address(newToken), "Cannot recover newToken");
+        require(IERC20(token).transfer(msg.sender, amount), "Token recovery failed");
+        emit TokensRecovered(token, amount);
+    }
+
+    // Recover ETH (owner only, after delay)
+    function recoverETH() external onlyOwner {
+        require(block.timestamp >= withdrawalAllowedAfter, "Recovery not yet allowed");
+        uint256 balance = address(this).balance;
+        (bool sent, ) = msg.sender.call{value: balance}("");
+        require(sent, "ETH recovery failed");
+        emit ETHRecovered(balance);
+    }
+
+    // Make exchange rate publicly verifiable
+    function getExchangeRate() external pure returns (uint256 numerator, uint256 denominator) {
+        return (EXCHANGE_RATE_NUMERATOR, EXCHANGE_RATE_DENOMINATOR);
+    }
+
+    // Migration status view
+    function getMigrationStatus() external view returns (
+        bool active,
+        bool paused,
+        uint256 withdrawalDelay,
+        uint256 newTokenBalance
+    ) {
+        return (
+            isMigrationActive,
+            paused,
+            withdrawalAllowedAfter,
+            newToken.balanceOf(address(this))
+        );
+    }
+
+    // Prevent ETH from being sent to the contract
+    receive() external payable {
+        revert("Contract does not accept ETH");
+    }
+
+    // Fallback function for safety
+    fallback() external payable {
+        revert("Contract does not accept ETH");
+    }
+}
