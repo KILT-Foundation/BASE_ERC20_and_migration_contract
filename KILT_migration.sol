@@ -12,7 +12,8 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant EXCHANGE_RATE_NUMERATOR = 175; // 1.75 ratio
     uint256 public constant EXCHANGE_RATE_DENOMINATOR = 100;
     bool public isMigrationActive = true; // Starts active
-    uint256 public withdrawalAllowedAfter; // Timestamp for withdrawal
+    uint256 public withdrawalAllowedAfter; // Timestamp after which sweep to Treasury is allowed
+    address public destinationAddress; // Treasury address to receive remaining tokens
     mapping(address => bool) public whitelist; // Dynamic whitelist
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD; // Common burn address
 
@@ -25,19 +26,30 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     event TokensMigrated(address indexed user, uint256 oldAmount, uint256 newAmount);
     event ContractPaused(address indexed owner);
     event ContractUnpaused(address indexed owner);
+    event DestinationAddressSet(address indexed destination);
+    event RemainingTokensSwept(address indexed treasury, uint256 amount);
 
-    constructor(address _oldToken, uint256 delayInSeconds) Ownable(msg.sender) {
+    constructor(address _oldToken, uint256 delayInSeconds, address _treasuryAddress) Ownable(msg.sender) {
         oldToken = IERC20(_oldToken);
         withdrawalAllowedAfter = block.timestamp + delayInSeconds;
+        destinationAddress = _treasuryAddress;
+        require(_treasuryAddress != address(0), "Invalid treasury address");
     }
 
     // Validate newToken address
     function setNewToken(address _newToken) external onlyOwner {
         require(address(newToken) == address(0), "New token already set");
         require(_newToken != address(0), "Invalid token address");
-        require(IERC20(_newToken).totalSupply() > 0, "Not a valid ERC-20 token"); // Basic validation
+        require(IERC20(_newToken).totalSupply() > 0, "Not a valid ERC-20 token");
         newToken = IERC20(_newToken);
         emit NewTokenUpdated(_newToken);
+    }
+
+    // Set or update Treasury address (owner only)
+    function setDestinationAddress(address _treasuryAddress) external onlyOwner {
+        require(_treasuryAddress != address(0), "Invalid treasury address");
+        destinationAddress = _treasuryAddress;
+        emit DestinationAddressSet(_treasuryAddress);
     }
 
     // Toggle migration on/off (owner only)
@@ -64,7 +76,7 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
         emit ContractUnpaused(msg.sender);
     }
 
-    // Prevent overflows and clearer error messages in migrate
+    // Migrate tokens
     function migrate(uint256 amount) external whenNotPaused nonReentrant {
         require(isMigrationActive || whitelist[msg.sender], "Migration off and not whitelisted");
         require(amount > 0, "Amount must be greater than 0");
@@ -73,18 +85,18 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
         require(newToken.balanceOf(address(this)) >= newTokenAmount, "Insufficient new token balance in contract");
         require(oldToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance for old tokens");
 
-        // Burn old tokens first (external call to oldToken)
         require(oldToken.transferFrom(msg.sender, BURN_ADDRESS, amount), "Failed to burn old tokens from sender");
-        // Then transfer new tokens (external call to newToken)
         require(newToken.transfer(msg.sender, newTokenAmount), "Failed to transfer new tokens to sender");
         emit TokensMigrated(msg.sender, amount, newTokenAmount);
     }
 
-    // Withdraw newKILT (owner only, after delay)
-    function withdrawNewTokens(uint256 amount) external onlyOwner whenNotPaused {
-        require(block.timestamp >= withdrawalAllowedAfter, "Withdrawal not yet allowed");
-        require(amount > 0, "Amount must be greater than 0");
-        require(newToken.transfer(msg.sender, amount), "Withdrawal failed");
+    // Sweep remaining newKILT tokens to Treasury (anyone can call, after delay)
+    function sweepToTreasury() external whenNotPaused {
+        require(block.timestamp >= withdrawalAllowedAfter, "Sweep not yet allowed");
+        uint256 remainingBalance = newToken.balanceOf(address(this));
+        require(remainingBalance > 0, "No tokens to sweep");
+        require(newToken.transfer(destinationAddress, remainingBalance), "Sweep to Treasury failed");
+        emit RemainingTokensSwept(destinationAddress, remainingBalance);
     }
 
     // Extend withdrawal delay (owner only, cannot shorten)
@@ -122,12 +134,14 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
         bool active,
         bool paused,
         uint256 withdrawalDelay,
+        address treasury,
         uint256 newTokenBalance
     ) {
         return (
             isMigrationActive,
             paused,
             withdrawalAllowedAfter,
+            destinationAddress,
             newToken.balanceOf(address(this))
         );
     }
