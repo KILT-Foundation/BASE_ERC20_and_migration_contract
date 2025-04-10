@@ -4,32 +4,30 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract KILT is ERC20 {
-    // Constants for token amounts (with 18 decimals)
     uint256 public constant TOTAL_SUPPLY = 290_560_000 * 10**18; // 290,560,000 tokens
-    uint256 public constant OWNER_AMOUNT = 50_000_000 * 10**18;  // 50,000,000 tokens
-    uint256 public constant MIGRATION_AMOUNT = TOTAL_SUPPLY - OWNER_AMOUNT; // 240,560,000 tokens
+    uint256 public constant TREASURY_AMOUNT = 50_000_000 * 10**18; // 50,000,000 tokens
+    uint256 public constant MIGRATION_AMOUNT = TOTAL_SUPPLY - TREASURY_AMOUNT; // 240,560,000 tokens
 
-    // Migration contract address (immutable, set at deployment)
     address public immutable migrationContract;
+    address public immutable treasuryAddress;
 
-    // Event for deployment transparency
-    event KILTDeployed(address indexed migrationContract, uint256 ownerAmount, uint256 migrationAmount);
+    event KILTDeployed(address indexed migrationContract, address indexed treasuryAddress, uint256 treasuryAmount, uint256 migrationAmount);
 
-    constructor(address _migrationContract) 
+    constructor(address _migrationContract, address _treasuryAddress) 
         ERC20("KILT Protocol", "KILT")
     {
         require(_migrationContract != address(0), "KILT: Migration contract cannot be zero address");
+        require(_treasuryAddress != address(0), "KILT: Treasury address cannot be zero address");
         
         migrationContract = _migrationContract;
+        treasuryAddress = _treasuryAddress;
 
-        // Mint tokens
-        _mint(msg.sender, OWNER_AMOUNT);
+        _mint(_treasuryAddress, TREASURY_AMOUNT);
         _mint(_migrationContract, MIGRATION_AMOUNT);
         
-        emit KILTDeployed(_migrationContract, OWNER_AMOUNT, MIGRATION_AMOUNT);
+        emit KILTDeployed(_migrationContract, _treasuryAddress, TREASURY_AMOUNT, MIGRATION_AMOUNT);
     }
 
-    // Explicit decimals for clarity
     function decimals() public pure override returns (uint8) {
         return 18;
     }
