@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract KILT is ERC20 {
     uint256 public constant TOTAL_SUPPLY = 290_560_000 * 10**18; // 290,560,000 tokens
-    uint256 public constant TREASURY_AMOUNT = 50_000_000 * 10**18; // 50,000,000 tokens
-    uint256 public constant MIGRATION_AMOUNT = TOTAL_SUPPLY - TREASURY_AMOUNT; // 240,560,000 tokens
+    uint256 public constant TREASURY_AMOUNT = 3_560_000 * 10**18; // 3,560,000 tokens
+    uint256 public constant MIGRATION_AMOUNT = TOTAL_SUPPLY - TREASURY_AMOUNT; // 287,000,000 tokens
 
     address public immutable migrationContract;
     address public immutable treasuryAddress;
