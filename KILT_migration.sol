@@ -59,10 +59,6 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     /// @param amount The amount recovered.
     event TokensRecovered(address indexed token, uint256 amount);
     
-    /// @notice Emitted when ETH is recovered.
-    /// @param amount The amount of ETH recovered.
-    event ETHRecovered(uint256 amount);
-    
     /// @notice Emitted when a user migrates tokens.
     /// @param user The address of the user migrating tokens.
     /// @param oldAmount The amount of old tokens burned.
@@ -193,16 +189,6 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
         require(token != address(newToken), "Cannot recover newToken");
         require(IERC20(token).transfer(msg.sender, amount), "Token recovery failed");
         emit TokensRecovered(token, amount);
-    }
-
-    /// @notice Recovers ETH sent to the contract.
-    /// @dev Only callable by the owner after the delay.
-    function recoverETH() external onlyOwner {
-        require(block.timestamp >= withdrawalAllowedAfter, "Recovery not yet allowed");
-        uint256 balance = address(this).balance;
-        (bool sent, ) = msg.sender.call{value: balance}("");
-        require(sent, "ETH recovery failed");
-        emit ETHRecovered(balance);
     }
 
     /// @notice Returns the exchange rate for migration.
