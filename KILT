@@ -1,55 +1,34 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
-    IERC20 public immutable oldToken;
-    IERC20 public newToken;
-    uint256 public constant EXCHANGE_RATE_NUMERATOR = 175;
-    uint256 public constant EXCHANGE_RATE_DENOMINATOR = 100;
-    uint256 public constant DECIMAL_ADJUSTMENT = 1000; // 10^3 for 15-to-18 decimals
-    bool public isMigrationActive = true;
-    uint256 public withdrawalAllowedAfter;
-    address public destinationAddress;
-    mapping(address => bool) public whitelist;
-    address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
+contract KILT is ERC20 {
+    uint256 public constant TOTAL_SUPPLY = 290_560_000 * 10**18; // 290,560,000 tokens
+    uint256 public constant TREASURY_AMOUNT = 13_587_418 * 10**18; // 13,587,418 tokens
+    uint256 public constant MIGRATION_AMOUNT = TOTAL_SUPPLY - TREASURY_AMOUNT; // 276,972,582 tokens
 
-    // Events (same as original)
-    event MigrationToggled(bool active);
-    event Whitelisted(address indexed account, bool status);
-    event NewTokenUpdated(address newToken);
-    event WithdrawalDelayExtended(uint256 newTimestamp);
-    event TokensRecovered(address indexed token, uint256 amount);
-    event TokensMigrated(address indexed user, uint256 oldAmount, uint256 newAmount);
-    event ContractPaused(address indexed owner);
-    event ContractUnpaused(address indexed owner);
-    event DestinationAddressSet(address indexed destination);
-    event RemainingTokensSwept(address indexed treasury, uint256 amount);
+    address public immutable migrationContract;
+    address public immutable treasuryAddress;
 
-    constructor(address _oldToken, uint256 delayInSeconds, address _treasuryAddress) Ownable(msg.sender) {
-        oldToken = IERC20(_oldToken);
-        withdrawalAllowedAfter = block.timestamp + delayInSeconds;
-        destinationAddress = _treasuryAddress;
-        require(_treasuryAddress != address(0), "Invalid treasury address");
+    event KILTDeployed(address indexed migrationContract, address indexed treasuryAddress, uint256 treasuryAmount, uint256 migrationAmount);
+
+    constructor(address _migrationContract, address _treasuryAddress) 
+        ERC20("KILT Protocol", "KILT")
+    {
+        require(_migrationContract != address(0), "KILT: Migration contract cannot be zero address");
+        require(_treasuryAddress != address(0), "KILT: Treasury address cannot be zero address");
+        
+        migrationContract = _migrationContract;
+        treasuryAddress = _treasuryAddress;
+
+        _mint(_treasuryAddress, TREASURY_AMOUNT);
+        _mint(_migrationContract, MIGRATION_AMOUNT);
+        
+        emit KILTDeployed(_migrationContract, _treasuryAddress, TREASURY_AMOUNT, MIGRATION_AMOUNT);
     }
 
-    // Other functions (setNewToken, setDestinationAddress, toggleMigration, setWhitelist, pause, unpause, sweepToTreasury, extendWithdrawalDelay, recoverTokens, getExchangeRate, getMigrationStatus, receive, fallback) remain unchanged
-
-    function migrate(uint256 amount) external whenNotPaused nonReentrant {
-        require(isMigrationActive || whitelist[msg.sender], "Migration off and not whitelisted");
-        require(amount > 0, "Amount must be greater than 0");
-        uint256 adjustedAmount = amount * DECIMAL_ADJUSTMENT; // Adjust for 15-to-18 decimals
-        uint256 newTokenAmount = (adjustedAmount * EXCHANGE_RATE_NUMERATOR) / EXCHANGE_RATE_DENOMINATOR;
-        require(newTokenAmount > 0, "New token amount too small after conversion");
-        require(newToken.balanceOf(address(this)) >= newTokenAmount, "Insufficient new token balance in contract");
-        require(oldToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance for old tokens");
-
-        require(oldToken.transferFrom(msg.sender, BURN_ADDRESS, amount), "Failed to burn old tokens from sender");
-        require(newToken.transfer(msg.sender, newTokenAmount), "Failed to transfer new tokens to sender");
-        emit TokensMigrated(msg.sender, amount, newTokenAmount);
+    function decimals() public pure override returns (uint8) {
+        return 18;
     }
 }
