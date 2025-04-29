@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @title KILTMigration
-/// @notice Facilitates migration from an old KILT token to a new KILT token at a 1.75:1 ratio.
+/// @notice Facilitates migration of KILT at a 1:1.75 ratio.
 /// @dev Inherits from OpenZeppelin's Ownable, Pausable, and ReentrancyGuard for secure management.
 contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     /// @notice The old KILT token contract (ERC-20).
@@ -144,7 +144,7 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
         emit ContractUnpaused(msg.sender);
     }
 
-    /// @notice Migrates old tokens to new tokens at a 1.75:1 ratio.
+    /// @notice Migrates old tokens to new tokens at a 1:1.75 ratio.
     /// @param amount The amount of old tokens to migrate.
     /// @dev Burns old tokens and transfers new tokens; requires approval and sufficient contract balance.
     function migrate(uint256 amount) external whenNotPaused nonReentrant {
