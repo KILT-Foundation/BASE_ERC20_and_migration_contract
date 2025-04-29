@@ -10,14 +10,14 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 /// @notice Facilitates migration of KILT at a 1:1.75 ratio.
 /// @dev Inherits from OpenZeppelin's Ownable, Pausable, and ReentrancyGuard for secure management.
 contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
-    /// @notice Treasury address to receive remaining tokens after the migration period.
-    address public destinationAddress;
-
     /// @notice The new KILT token contract (ERC-20).
     IERC20 public newToken;
 
     /// @notice The old KILT token contract (ERC-20).
     IERC20 public immutable oldToken;
+
+    /// @notice Treasury address to receive remaining tokens after the migration period.
+    address public destinationAddress;
 
     /// @notice Numerator for the exchange rate (175/100 = 1.75 new tokens per old token).
     uint256 public constant EXCHANGE_RATE_NUMERATOR = 175;
