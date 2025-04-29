@@ -10,76 +10,76 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 /// @notice Facilitates migration of KILT at a 1:1.75 ratio.
 /// @dev Inherits from OpenZeppelin's Ownable, Pausable, and ReentrancyGuard for secure management.
 contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
-    /// @notice The old KILT token contract (ERC-20).
-    IERC20 public immutable oldToken;
-    
-    /// @notice The new KILT token contract (ERC-20).
-    IERC20 public newToken;
-    
-    /// @notice Numerator for the exchange rate (175/100 = 1.75 new tokens per old token).
-    uint256 public constant EXCHANGE_RATE_NUMERATOR = 175;
-    
-    /// @notice Denominator for the exchange rate.
-    uint256 public constant EXCHANGE_RATE_DENOMINATOR = 100;
-    
-    /// @notice Adjustment for decimal difference between old (15 decimals) and new (18 decimals) tokens.
-    uint256 public constant DECIMAL_ADJUSTMENT = 1000;
-    
-    /// @notice Indicates whether migration is active for non-whitelisted users.
-    bool public isMigrationActive = true;
-    
-    /// @notice Timestamp after which remaining tokens can be swept to the treasury.
-    uint256 public withdrawalAllowedAfter;
-    
     /// @notice Treasury address to receive remaining tokens after the migration period.
     address public destinationAddress;
-    
+
+    /// @notice The new KILT token contract (ERC-20).
+    IERC20 public newToken;
+
+    /// @notice The old KILT token contract (ERC-20).
+    IERC20 public immutable oldToken;
+
+    /// @notice Numerator for the exchange rate (175/100 = 1.75 new tokens per old token).
+    uint256 public constant EXCHANGE_RATE_NUMERATOR = 175;
+
+    /// @notice Adjustment for decimal difference between old (15 decimals) and new (18 decimals) tokens.
+    uint256 public constant DECIMAL_ADJUSTMENT = 1000;
+
+    /// @notice Denominator for the exchange rate.
+    uint256 public constant EXCHANGE_RATE_DENOMINATOR = 100;
+
+    /// @notice Timestamp after which remaining tokens can be swept to the treasury.
+    uint256 public withdrawalAllowedAfter;
+
+    /// @notice Indicates whether migration is active for non-whitelisted users.
+    bool public isMigrationActive = true;
+
     /// @notice Mapping of addresses allowed to migrate when isMigrationActive is false.
     mapping(address => bool) public whitelist;
-    
+
     /// @notice Standard burn address for old tokens.
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     /// @notice Emitted when migration is toggled on or off.
     /// @param active Whether migration is active.
     event MigrationToggled(bool active);
-    
+
     /// @notice Emitted when an address is added to or removed from the whitelist.
     /// @param account The address affected.
     /// @param status The new whitelist status (true = whitelisted, false = not whitelisted).
     event Whitelisted(address indexed account, bool status);
-    
+
     /// @notice Emitted when the new token address is set.
     /// @param newToken The address of the new KILT token contract.
     event NewTokenUpdated(address newToken);
-    
+
     /// @notice Emitted when the withdrawal delay is extended.
     /// @param newTimestamp The new timestamp for withdrawal allowance.
     event WithdrawalDelayExtended(uint256 newTimestamp);
-    
+
     /// @notice Emitted when unrelated ERC-20 tokens are recovered.
     /// @param token The token contract address.
     /// @param amount The amount recovered.
     event TokensRecovered(address indexed token, uint256 amount);
-    
+
     /// @notice Emitted when a user migrates tokens.
     /// @param user The address of the user migrating tokens.
     /// @param oldAmount The amount of old tokens burned.
     /// @param newAmount The amount of new tokens received.
     event TokensMigrated(address indexed user, uint256 oldAmount, uint256 newAmount);
-    
+
     /// @notice Emitted when the contract is paused.
     /// @param owner The address of the owner who paused the contract.
     event ContractPaused(address indexed owner);
-    
+
     /// @notice Emitted when the contract is unpaused.
     /// @param owner The address of the owner who unpaused the contract.
     event ContractUnpaused(address indexed owner);
-    
+
     /// @notice Emitted when the treasury address is updated.
-    /// @param destination The new treasury address.
+    /// @  @param destination The new treasury address.
     event DestinationAddressSet(address indexed destination);
-    
+
     /// @notice Emitted when remaining tokens are swept to the treasury.
     /// @param treasury The treasury address receiving the tokens.
     /// @param amount The amount of tokens swept.
