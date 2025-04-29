@@ -4,8 +4,8 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract KILT is ERC20 {
+    address public immutable treasuryAddress;    
     address public immutable migrationContract;
-    address public immutable treasuryAddress;
     uint256 public constant TREASURY_AMOUNT = 13_587_418 * 10**18;
     uint256 public constant MIGRATION_AMOUNT = TOTAL_SUPPLY - TREASURY_AMOUNT;
     uint256 public constant TOTAL_SUPPLY = 290_560_000 * 10**18;
