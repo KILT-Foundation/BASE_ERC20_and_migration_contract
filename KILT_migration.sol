@@ -22,6 +22,9 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     /// @notice Denominator for the exchange rate.
     uint256 public constant EXCHANGE_RATE_DENOMINATOR = 100;
     
+    /// @notice Adjustment for decimal difference between old (15 decimals) and new (18 decimals) tokens.
+    uint256 public constant DECIMAL_ADJUSTMENT = 1000;
+    
     /// @notice Indicates whether migration is active for non-whitelisted users.
     bool public isMigrationActive = true;
     
@@ -150,7 +153,8 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     function migrate(uint256 amount) external whenNotPaused nonReentrant {
         require(isMigrationActive || whitelist[msg.sender], "Migration off and not whitelisted");
         require(amount > 0, "Amount must be greater than 0");
-        uint256 newTokenAmount = (amount * EXCHANGE_RATE_NUMERATOR) / EXCHANGE_RATE_DENOMINATOR;
+        uint256 adjustedAmount = amount * DECIMAL_ADJUSTMENT;
+        uint256 newTokenAmount = (adjustedAmount * EXCHANGE_RATE_NUMERATOR) / EXCHANGE_RATE_DENOMINATOR;
         require(newTokenAmount > 0, "New token amount too small after conversion");
         require(newToken.balanceOf(address(this)) >= newTokenAmount, "Insufficient new token balance in contract");
         require(oldToken.allowance(msg.sender, address(this)) >= amount, "Insufficient allowance for old tokens");
