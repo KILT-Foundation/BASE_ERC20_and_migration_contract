@@ -213,7 +213,7 @@ contract KILTMigration is Ownable, Pausable, ReentrancyGuard {
     ) {
         return (
             isMigrationActive,
-            paused(),
+            paused,
             withdrawalAllowedAfter,
             destinationAddress,
             newToken.balanceOf(address(this))
